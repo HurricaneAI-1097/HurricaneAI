@@ -33,5 +33,10 @@ RUN prisma generate
 ENV PORT=8000
 EXPOSE 8000
 
-# Web service default command. Workers override CMD via platform config.
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Ensure start script is executable
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Web service default command (runs migrations then starts server).
+# Workers override CMD via platform config / dockerCommand.
+CMD ["/app/start.sh"]

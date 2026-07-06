@@ -1,17 +1,27 @@
 # Render Blueprint: HurricaneAI backend
-# Deploy: push this repo to GitHub, then in Render click "New +" -> "Blueprint"
-# and point it at the repo. Render will create all three services below.
-#
-# You must set the marked `sync: false` env vars in the Render dashboard AFTER
-# the blueprint is applied (they hold secrets and can't live in git).
+# ─────────────────────────────────────────────────────────────────────────────
+# DEPLOY INSTRUCTIONS
+# 1. Push this repo to GitHub (github.com/HurricaneAI-1097/HurricaneAI).
+# 2. In Render: click "New +" → "Blueprint" → select the repo.
+#    When prompted for the Blueprint file path, enter: backend/render.yaml
+# 3. Render creates three services: hurricaneai-api, hurricaneai-worker, hurricaneai-redis.
+# 4. In Render dashboard, set ALL "sync: false" vars on BOTH api & worker services:
+#      DATABASE_URL        = your Supabase pooled connection string (port 6543)
+#      SUPABASE_URL        = your Supabase project URL
+#      SUPABASE_KEY        = your Supabase service_role key
+#      SUPABASE_JWT_SECRET = your Supabase JWT secret
+#      OPENAI_API_KEY      = your OpenAI API key
+# 5. Trigger a manual deploy on hurricaneai-api.
+# 6. Copy the api public URL → add /api/v1 → paste into Vercel as NEXT_PUBLIC_API_URL.
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
-  # --- FastAPI web service --------------------------------------------
+  # ── FastAPI web service ──────────────────────────────────────────────────
   - type: web
     name: hurricaneai-api
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
     plan: starter
     healthCheckPath: /health
     autoDeploy: true
@@ -22,6 +32,7 @@ services:
         value: "false"
       - key: PORT
         value: "8000"
+      # ↓ Set these manually in the Render dashboard (marked sync: false = secret)
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL
@@ -32,6 +43,7 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      # ↓ Non-secrets set here
       - key: OPENAI_MODEL
         value: gpt-4o-mini
       - key: OPENAI_TEMPERATURE
@@ -42,14 +54,14 @@ services:
           name: hurricaneai-redis
           property: connectionString
       - key: CORS_ORIGINS
-        value: https://hurricaneai.vercel.app,http://localhost:3000
+        value: "https://hurricaneai.vercel.app,http://localhost:3000"
 
-  # --- ARQ background worker ------------------------------------------
+  # ── ARQ background worker ────────────────────────────────────────────────
   - type: worker
     name: hurricaneai-worker
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
     plan: starter
     autoDeploy: true
     dockerCommand: arq app.workers.tasks.WorkerSettings
@@ -78,9 +90,9 @@ services:
           name: hurricaneai-redis
           property: connectionString
 
-  # --- Redis (managed) ------------------------------------------------
+  # ── Redis (managed) ──────────────────────────────────────────────────────
   - type: redis
     name: hurricaneai-redis
     plan: starter
-    ipAllowList: []  # Restrict to Render internal network only
+    ipAllowList: []       # internal Render network only
     maxmemoryPolicy: noeviction
