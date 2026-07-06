@@ -36,12 +36,24 @@ async def get_overview(
 
     conversion_rate = (converted_leads / total_leads * 100) if total_leads else 0.0
 
+    # Approved rate: QUALIFIED / (QUALIFIED + LOST)  scored leads
+    lost_leads = await db.lead.count(
+        where={"userId": user_id, "isDeleted": False, "status": "LOST"}
+    )
+    triaged = qualified_leads + lost_leads
+    approved_rate = round(qualified_leads / triaged * 100, 1) if triaged else 0.0
+
+    # Sync success rate placeholder (100% until sync_logs table added)
+    sync_success_rate = 100.0
+
     return ApiResponse(
         data={
             "total_leads": total_leads,
             "qualified_leads": qualified_leads,
             "converted_leads": converted_leads,
             "conversion_rate": round(conversion_rate, 2),
+            "approved_rate": approved_rate,
+            "sync_success_rate": sync_success_rate,
             "active_campaigns": active_campaigns,
             "total_campaigns": total_campaigns,
         }
