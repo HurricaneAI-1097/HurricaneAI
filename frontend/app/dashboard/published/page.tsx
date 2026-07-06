@@ -46,21 +46,21 @@ export default async function PublishedPage() {
   };
 
   try {
-    const authHeader = session?.access_token
+    const authHeaders: Record<string, string> = session?.access_token
       ? { Authorization: `Bearer ${session.access_token}` }
       : {};
 
     const [leadsRes, campaignsRes, analyticsRes] = await Promise.all([
       fetch(`${apiBase}/leads?limit=20&status=review`, {
-        headers: authHeader,
+        headers: authHeaders,
         cache: "no-store",
       }),
       fetch(`${apiBase}/campaigns?limit=10`, {
-        headers: authHeader,
+        headers: authHeaders,
         cache: "no-store",
       }),
       fetch(`${apiBase}/analytics/overview`, {
-        headers: authHeader,
+        headers: authHeaders,
         cache: "no-store",
       }),
     ]);
