@@ -168,7 +168,60 @@ Once the backend is running, interactive API documentation is available at:
 1. **Schema changes**: Update `backend/prisma/schema.prisma`, then run
    `poetry run prisma migrate dev --name <description>` to generate a
    migration and regenerate the Prisma client.
-2. **New API endpoints**: Add routes under `backend/app/api/v1/`, register
+2. **New API endpoints**: Add routes under `backend/app/api/v1/`, register# AI Lead App
+
+AI Lead App is a multi-tenant, TypeScript-based lead generation platform built on Next.js and Supabase. It combines AI scoring, campaign generation, and CRM sync with strong database-level isolation between tenant accounts.
+
+## Stack
+
+- **Frontend**: Next.js App Router (TypeScript)
+- **Backend**: Supabase Postgres + Row Level Security (RLS)
+- **Auth**: Supabase Auth (email/OAuth)
+- **AI**: OpenAI Responses API for lead scoring and outreach drafting
+- **CRM**: HubSpot Contacts API for syncing approved leads
+
+## Multi-Tenant Architecture
+
+- Each user maps to a `profiles` row with `id = auth.uid()` and a non-null `account_id`.
+- Each tenant/workspace is an `accounts` row (`id uuid primary key`).
+- All domain tables include `account_id` and are protected by RLS policies:
+  - `leads`, `campaigns`, `outreach_messages`
+  - `score_runs`, `hubspot_mappings`, `sync_logs`
+- RLS ensures every query returns data only for the authenticated user’s tenant.
+
+## Core Features
+
+- **Lead intake**: Create and manage leads per account, with source and contact details.
+- **AI scoring**: Server-side endpoint calls OpenAI to score fit, urgency, confidence, etc., storing structured results in `score_runs`.
+- **Campaigns & outreach**: Build campaigns and draft outreach messages driven by AI and lead context.
+- **CRM sync**: Approved leads can be synced to HubSpot contacts; mappings and sync logs are stored in Supabase.
+- **Security**: All frontend queries use the anon key under RLS; privileged operations use service-role on the backend with explicit `account_id` checks.
+
+## Supabase Migrations
+
+Two key migrations:
+
+1. **Add & backfill `account_id`**  
+   - Adds `account_id` to core tables (leads, campaigns, outreach_messages, score_runs, hubspot_mappings, sync_logs).  
+   - Backfills from existing relationships (profiles.account_id via created_by, or leads.account_id via lead_id).  
+   - Adds NOT NULL constraints, FKs, and indexes.
+
+2. **Enable RLS and policies**  
+   - Enables and forces RLS on `accounts`, `profiles`, and all domain tables.  
+   - Policies scope CRUD by `profiles.account_id` and `lead_id` relationships for operational tables.
+
+## Next.js Integration
+
+- Client:
+  - Uses Supabase anon key.
+  - `ensureProfileAndAccount()` runs after login to create/link `profiles` and `accounts`.
+- Server:
+  - Uses `createServerSupabaseClient()` and `getCurrentAccountId()` to resolve the current tenant.
+  - API routes perform domain logic (scoring, sync) while RLS enforces tenant boundaries.
+
+## Deployment
+
+1.
    them in `backend/app/api/v1/router.py`, and back them with a service in
    `backend/app/services/`.
 3. **AI chain changes**: Update prompts in `backend/app/ai/prompts.py` and
