@@ -1,0 +1,53 @@
+[tool.poetry]
+name = "ai-leadgen-backend"
+version = "0.1.0"
+description = "FastAPI backend for the AI Lead Generation platform"
+authors = ["AI Lead Gen Team"]
+readme = "README.md"
+packages = [{ include = "app" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.111.0"
+uvicorn = { extras = ["standard"], version = "^0.30.0" }
+prisma = "^0.13.1"
+supabase = "^2.5.0"
+langchain = "^0.2.5"
+langchain-openai = "^0.1.8"
+langchain-core = "^0.2.9"
+arq = "^0.26.0"
+redis = "^5.0.4"
+pydantic = "^2.7.4"
+pydantic-settings = "^2.3.3"
+python-jose = { extras = ["cryptography"], version = "^3.3.0" }
+python-multipart = "^0.0.9"
+aiofiles = "^23.2.1"
+httpx = "^0.27.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.2"
+pytest-asyncio = "^0.23.7"
+httpx = "^0.27.0"
+black = "^24.4.2"
+ruff = "^0.4.10"
+mypy = "^1.10.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true

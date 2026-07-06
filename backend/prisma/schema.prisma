@@ -1,0 +1,150 @@
+// Prisma schema for AI Lead Generation platform
+// Database: PostgreSQL (hosted via Supabase)
+// Client:   prisma-client-py (async)
+
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique
+  name      String?
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  leads      Lead[]
+  campaigns  Campaign[]
+  auditLogs  AuditLog[]
+
+  @@map("users")
+}
+
+model Lead {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String
+  firstName    String     @map("first_name")
+  lastName     String     @map("last_name")
+  company      String
+  title        String
+  phone        String?
+  linkedinUrl  String?    @map("linkedin_url")
+  website      String?
+  score        Int        @default(0)
+  status       LeadStatus @default(NEW)
+  source       String
+  enriched     Boolean    @default(false)
+  enrichedAt   DateTime?  @map("enriched_at")
+  notes        String?    @db.Text
+  tags         String[]   @default([])
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  campaignId String?   @map("campaign_id") @db.Uuid
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  enrichment Enrichment?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([campaignId])
+  @@index([status])
+  @@index([email])
+  @@map("leads")
+}
+
+model Campaign {
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String
+  description    String?
+  status         CampaignStatus @default(DRAFT)
+  targetCriteria Json           @map("target_criteria")
+  aiPrompt       String         @db.Text @map("ai_prompt")
+  totalLeads     Int            @default(0) @map("total_leads")
+  convertedLeads Int            @default(0) @map("converted_leads")
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  leads Lead[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("campaigns")
+}
+
+model Enrichment {
+  id             String   @id @default(uuid()) @db.Uuid
+  leadId         String   @unique @map("lead_id") @db.Uuid
+  lead           Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  linkedinData   Json?    @map("linkedin_data")
+  companyData    Json?    @map("company_data")
+  emailVerified  Boolean  @default(false) @map("email_verified")
+  phoneVerified  Boolean  @default(false) @map("phone_verified")
+  aiSummary      String?  @db.Text @map("ai_summary")
+  aiScore        Int?     @map("ai_score")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("enrichments")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String
+  resource   String
+  resourceId String   @map("resource_id")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([resource, resourceId])
+  @@map("audit_logs")
+}

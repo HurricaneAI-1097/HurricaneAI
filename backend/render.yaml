@@ -1,0 +1,86 @@
+# Render Blueprint: HurricaneAI backend
+# Deploy: push this repo to GitHub, then in Render click "New +" -> "Blueprint"
+# and point it at the repo. Render will create all three services below.
+#
+# You must set the marked `sync: false` env vars in the Render dashboard AFTER
+# the blueprint is applied (they hold secrets and can't live in git).
+
+services:
+  # --- FastAPI web service --------------------------------------------
+  - type: web
+    name: hurricaneai-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: prod
+      - key: DEBUG
+        value: "false"
+      - key: PORT
+        value: "8000"
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_TEMPERATURE
+        value: "0.2"
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: hurricaneai-redis
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: https://hurricaneai.vercel.app,http://localhost:3000
+
+  # --- ARQ background worker ------------------------------------------
+  - type: worker
+    name: hurricaneai-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    autoDeploy: true
+    dockerCommand: arq app.workers.tasks.WorkerSettings
+    envVars:
+      - key: APP_ENV
+        value: prod
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_TEMPERATURE
+        value: "0.2"
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: hurricaneai-redis
+          property: connectionString
+
+  # --- Redis (managed) ------------------------------------------------
+  - type: redis
+    name: hurricaneai-redis
+    plan: starter
+    ipAllowList: []  # Restrict to Render internal network only
+    maxmemoryPolicy: noeviction
